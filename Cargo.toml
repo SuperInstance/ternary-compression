@@ -1,0 +1,10 @@
+[package]
+name = "ternary-compression"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Compress ternary sequences: run-length, Huffman, and dictionary-based compression"
+keywords = ["compression", "ternary", "huffman", "run-length", "encoding"]
+categories = ["algorithms", "compression", "encoding"]
+
+[dependencies]
