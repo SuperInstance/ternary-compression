@@ -207,17 +207,22 @@ impl HuffmanNode {
 #[derive(Debug, Clone)]
 pub struct TernaryHuffman {
     codes: HashMap<Trit, Vec<u8>>,
+    expected_bits_per_trit: f64,
 }
 
 impl TernaryHuffman {
     /// Build Huffman codes from a ternary sequence
     pub fn build(seq: &TernarySequence) -> Self {
-        let mut freq: HashMap<Trit, usize> = HashMap::new();
+        // Actual empirical occurrence counts (used for the true expected length)
+        let mut counts: HashMap<Trit, usize> = HashMap::new();
         for &trit in seq.trits() {
-            *freq.entry(trit).or_insert(0) += 1;
+            *counts.entry(trit).or_insert(0) += 1;
         }
+        let total = seq.len();
 
-        // Ensure all three trits are present
+        // Frequencies for tree construction: ensure all three trits are present
+        // so the code is complete and prefix-free even for skewed/degenerate input.
+        let mut freq = counts.clone();
         for t in [Trit::Neg, Trit::Zero, Trit::Pos] {
             freq.entry(t).or_insert(1);
         }
@@ -241,7 +246,23 @@ impl TernaryHuffman {
             Self::build_codes(&root, Vec::new(), &mut codes);
         }
 
-        TernaryHuffman { codes }
+        // Expected bits per trit under the empirical symbol distribution:
+        // L_bar = sum_i p_i * l_i, with p_i = count_i / total. This equals the
+        // actual number of bits emitted when encoding `seq`, divided by seq.len().
+        let expected_bits_per_trit = if total == 0 {
+            0.0
+        } else {
+            let bits: usize = codes
+                .iter()
+                .map(|(trit, code)| counts.get(trit).copied().unwrap_or(0) * code.len())
+                .sum();
+            bits as f64 / total as f64
+        };
+
+        TernaryHuffman {
+            codes,
+            expected_bits_per_trit,
+        }
     }
 
     fn build_codes(node: &HuffmanNode, prefix: Vec<u8>, codes: &mut HashMap<Trit, Vec<u8>>) {
@@ -305,10 +326,11 @@ impl TernaryHuffman {
         &self.codes
     }
 
-    /// Calculate average bits per trit
+    /// Expected bits per trit under the empirical distribution the code was
+    /// built from: `L_bar = sum_i p_i * l_i`. Equals the actual number of bits
+    /// emitted when encoding the build sequence, divided by its length.
     pub fn avg_bits_per_trit(&self) -> f64 {
-        let total_bits: usize = self.codes.values().map(|c| c.len()).sum();
-        total_bits as f64 / self.codes.len().max(1) as f64
+        self.expected_bits_per_trit
     }
 }
 
