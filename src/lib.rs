@@ -201,10 +201,6 @@ impl HuffmanNode {
             right: Some(Box::new(right)),
         }
     }
-
-    fn is_leaf(&self) -> bool {
-        self.trit.is_some()
-    }
 }
 
 /// Huffman coding for ternary sequences
@@ -226,7 +222,8 @@ impl TernaryHuffman {
             freq.entry(t).or_insert(1);
         }
 
-        let mut nodes: Vec<HuffmanNode> = freq.into_iter()
+        let mut nodes: Vec<HuffmanNode> = freq
+            .into_iter()
             .map(|(trit, f)| HuffmanNode::leaf(trit, f))
             .collect();
 
@@ -288,7 +285,8 @@ impl TernaryHuffman {
         while pos < bits.len() {
             let mut found = false;
             for (code, trit) in &reverse {
-                if pos + code.len() <= bits.len() && &bits[pos..pos + code.len()] == code.as_slice() {
+                if pos + code.len() <= bits.len() && &bits[pos..pos + code.len()] == code.as_slice()
+                {
                     trits.push(*trit);
                     pos += code.len();
                     found = true;
@@ -350,15 +348,14 @@ impl DictionaryCompressor {
                 break;
             }
             for i in 0..=seq.len() - len {
-                let pattern: Vec<Trit> = (i..i + len)
-                    .filter_map(|j| seq.get(j))
-                    .collect();
+                let pattern: Vec<Trit> = (i..i + len).filter_map(|j| seq.get(j)).collect();
                 *freq_map.entry(pattern).or_insert(0) += 1;
             }
         }
 
         // Keep patterns that appear more than once
-        let mut entries: Vec<_> = freq_map.into_iter()
+        let mut entries: Vec<_> = freq_map
+            .into_iter()
             .filter(|(_, f)| *f > 1)
             .map(|(pattern, freq)| DictEntry {
                 pattern,
@@ -368,9 +365,7 @@ impl DictionaryCompressor {
             .collect();
 
         // Sort by frequency * length (prioritize long, frequent patterns)
-        entries.sort_by(|a, b| {
-            (b.freq * b.pattern.len()).cmp(&(a.freq * a.pattern.len()))
-        });
+        entries.sort_by_key(|b| std::cmp::Reverse(b.freq * b.pattern.len()));
 
         // Assign codes
         for (i, entry) in entries.iter_mut().enumerate() {
@@ -392,11 +387,12 @@ impl DictionaryCompressor {
 
             // Try longest dictionary match first
             for entry in &self.dict {
-                if entry.pattern.len() > best_len && i + entry.pattern.len() <= trits.len() {
-                    if &trits[i..i + entry.pattern.len()] == entry.pattern.as_slice() {
-                        best_match = Some(entry.code);
-                        best_len = entry.pattern.len();
-                    }
+                if entry.pattern.len() > best_len
+                    && i + entry.pattern.len() <= trits.len()
+                    && &trits[i..i + entry.pattern.len()] == entry.pattern.as_slice()
+                {
+                    best_match = Some(entry.code);
+                    best_len = entry.pattern.len();
                 }
             }
 
@@ -546,8 +542,16 @@ mod tests {
         let seq = TernarySequence::from_i8(&[1, 1, 1, 1, -1, 0]);
         let huffman = TernaryHuffman::build(&seq);
         // Most frequent trit (Pos) should have shortest code
-        let pos_len = huffman.codes().get(&Trit::Pos).map(|c| c.len()).unwrap_or(99);
-        let neg_len = huffman.codes().get(&Trit::Neg).map(|c| c.len()).unwrap_or(99);
+        let pos_len = huffman
+            .codes()
+            .get(&Trit::Pos)
+            .map(|c| c.len())
+            .unwrap_or(99);
+        let neg_len = huffman
+            .codes()
+            .get(&Trit::Neg)
+            .map(|c| c.len())
+            .unwrap_or(99);
         assert!(pos_len <= neg_len);
     }
 
@@ -635,13 +639,15 @@ mod tests {
 
     #[test]
     fn test_huffman_long_sequence() {
-        let values: Vec<i8> = (0..100).map(|i| match i % 5 {
-            0 => 1,
-            1 => 1,
-            2 => 1,
-            3 => 0,
-            _ => -1,
-        }).collect();
+        let values: Vec<i8> = (0..100)
+            .map(|i| match i % 5 {
+                0 => 1,
+                1 => 1,
+                2 => 1,
+                3 => 0,
+                _ => -1,
+            })
+            .collect();
         let seq = TernarySequence::from_i8(&values);
         let huffman = TernaryHuffman::build(&seq);
         let encoded = huffman.encode(&seq);
